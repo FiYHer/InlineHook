@@ -1,20 +1,53 @@
 
-#include "InlineHook.h"
+#include <process.h>
+#include "D3DHook.h"
 
-InlineHook g_Hook;
+d3dhook::D3DHook g_Hook;
 
-int
-WINAPI
-MyMessageBoxA(
-	_In_opt_ HWND hWnd,
-	_In_opt_ LPCSTR lpText,
-	_In_opt_ LPCSTR lpCaption,
-	_In_ UINT uType)
+HRESULT _stdcall MyReset(IDirect3DDevice9* pDirect3DDevice, D3DPRESENT_PARAMETERS* pPresentationParameters)
 {
-	g_Hook.ReduceAddress();
-	int nRet = MessageBoxA(0, "你被劫持了", 0, 0);
-	g_Hook.ModifyAddress();
-	return nRet;
+	g_Hook.SetGameDirect3DDevicePoint(pDirect3DDevice);
+	g_Hook.ReduceAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Reset);
+
+	static int nIndex = 0;
+	std::cout << nIndex++ << std::endl;
+	HRESULT hRet = pDirect3DDevice->Reset(pPresentationParameters);
+
+	g_Hook.ModifyAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Reset);
+	return hRet;
+}
+
+HRESULT _stdcall MyPresent(IDirect3DDevice9* pDirect3DDevice, CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion)
+{
+	g_Hook.SetGameDirect3DDevicePoint(pDirect3DDevice);
+	g_Hook.ReduceAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Present);
+
+	static int nIndex = 0;
+	std::cout << nIndex++ << std::endl;
+	HRESULT hRet = pDirect3DDevice->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+
+	g_Hook.ModifyAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Present);
+	return hRet;
+}
+
+void InitializeHook(void* pBuf)
+{
+	d3dhook::InitializeD3DClass(&g_Hook);
+
+	if (g_Hook.InitializeAndModifyAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Present, reinterpret_cast<int>(MyPresent)))
+		MessageBoxA(0, "MyPresent成功", 0, 0);
+
+	if (g_Hook.InitializeAndModifyAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Reset,
+		reinterpret_cast<int>(MyReset)))
+		MessageBoxA(0, "MyReset成功", 0, 0);
+
+}
+
+void CreateDebugConsole()
+{
+	AllocConsole();
+	SetConsoleTitleA("Test Log");
+	freopen("CON", "w", stdout);
 }
 
 BOOL WINAPI DllMain(
@@ -24,13 +57,13 @@ BOOL WINAPI DllMain(
 {
 	if (_Reason == DLL_PROCESS_ATTACH)
 	{
-		if (g_Hook.Initialize(reinterpret_cast<int>(MessageBoxA), reinterpret_cast<int>(MyMessageBoxA)))
-			if (g_Hook.ModifyAddress())
-				MessageBoxW(0, L"成功Hook", 0, 0);
+		DisableThreadLibraryCalls(static_cast<HMODULE>(_DllHandle));
+		CreateDebugConsole();
+		_beginthread(InitializeHook, 0, 0);
 	}
-	if(_Reason == DLL_PROCESS_DETACH)
+	if (_Reason == DLL_PROCESS_DETACH)
 	{
-		g_Hook.ReduceAddress();
+		g_Hook.ReduceAllAddress();
 	}
 	return TRUE;
 }
