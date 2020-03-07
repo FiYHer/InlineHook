@@ -1,19 +1,18 @@
 #pragma once
-
 #include <iostream>
-
 #include <Windows.h>
 
-constexpr int ShellCodeLen = 5;
-constexpr char Asmjmp = '\xe9';
+constexpr int ShellCodeLen = 5;			///跳转指令 + 函数地址
+constexpr char Asmjmp = '\xe9';		///jmp
+
 class InlineHook
 {
 private:
-	unsigned char m_pOldAddress[ShellCodeLen];
-	unsigned char m_pNewAddress[ShellCodeLen];
+	unsigned char m_pOldAddress[ShellCodeLen];			///原始地址
+	unsigned char m_pNewAddress[ShellCodeLen];		///新的地址
 
-	int m_nOldAddress;
-	int m_nNewAddress;
+	int m_nOldAddress;			///原始地址
+	int m_nNewAddress;		///新的地址
 
 public:
 	InlineHook();

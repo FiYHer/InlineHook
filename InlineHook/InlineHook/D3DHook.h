@@ -1,18 +1,16 @@
 #pragma once
-
-#include <iostream>
+#include "InlineHook.h"
 #include <map>
 
+#include <time.h>
 #include <d3d9.h>
 #pragma comment(lib,"d3d9.lib")
-
-#include "InlineHook.h"
 
 namespace d3dhook
 {
 	enum D3dClass
 	{
-		Class_IDirect3D9,			//表示IDirect3D9类
+		Class_IDirect3D9,					//表示IDirect3D9类
 		Class_IDirect3DDevice9		//表示IDirect3DDevice9类
 	};
 
@@ -158,27 +156,27 @@ namespace d3dhook
 	{
 	private:
 		IDirect3D9* m_pOwnDirect3D;												//我们创建的IDirect3D9
-		IDirect3DDevice9* m_pOwnDirect3DDevice;									//我们创建的IDirect3DDevice9
+		IDirect3DDevice9* m_pOwnDirect3DDevice;							//我们创建的IDirect3DDevice9
 
-		int* m_pDirect3DTable;													//IDirect3D9类的函数查找指针
+		int* m_pDirect3DTable;														//IDirect3D9类的函数查找指针
 		int* m_pDirect3DDeviceTable;											//IDirect3DDevice9类的函数查找指针
 
 		IDirect3D9* m_pGameDirect3D;											//原本游戏里面的IDirect3D9
-		IDirect3DDevice9* m_pGameDirect3DDevice;								//原本游戏里面的IDirect3DDevice9
+		IDirect3DDevice9* m_pGameDirect3DDevice;					//原本游戏里面的IDirect3DDevice9
 
-		std::map<Direct3D_Function, InlineHook> m_cDirect3DAddress;				//保存Hook住的IDirect3D9函数
+		std::map<Direct3D_Function, InlineHook> m_cDirect3DAddress;							//保存Hook住的IDirect3D9函数
 		std::map<Direct3DDevice_Function, InlineHook> m_cDirect3DDeviceAddress;	//保存Hook住的IDirect3DDevice9函数
 
-		bool m_bInitialize;														//表示当前实例是否初始化完成
+		bool m_bInitialize;																//表示当前实例是否初始化完成
 
 	public:
-		void SetOwnDirect3DPoint(IDirect3D9* pDirect3D);
-		void SetOwnDirect3DDevicePoint(IDirect3DDevice9* pDirect3DDevice);
-		inline void SetInitialize(bool bState) { m_bInitialize = bState; }
+		void SetOwnDirect3DPoint(IDirect3D9* pDirect3D);			//设置我们的IDirect3D9指针
+		void SetOwnDirect3DDevicePoint(IDirect3DDevice9* pDirect3DDevice);		//设置我们的IDirect3DDevice9指针
+		inline void SetInitialize(bool bState) { m_bInitialize = bState; }		//设置初始化状态
 
 	public:
-		void SetGameDirect3DPoint(IDirect3D9* pDirect3D);
-		void SetGameDirect3DDevicePoint(IDirect3DDevice9* pDirect3DDevice);
+		void SetGameDirect3DPoint(IDirect3D9* pDirect3D);		//设置游戏里面的IDirect3D9指针
+		void SetGameDirect3DDevicePoint(IDirect3DDevice9* pDirect3DDevice);		//设置游戏里面的IDirect3DDevice9指针
 
 	public:
 		D3DHook();

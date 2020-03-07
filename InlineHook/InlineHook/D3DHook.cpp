@@ -2,7 +2,7 @@
 
 LRESULT CALLBACK d3dhook::D3DHookProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+	return DefWindowProcW(hWnd, uMsg, wParam, lParam);
 }
 
 bool d3dhook::InitializeD3DClass(D3DHook* pThis)
@@ -14,23 +14,22 @@ bool d3dhook::InitializeD3DClass(D3DHook* pThis)
 
 	try
 	{
+		CHAR szWindowClass[MAX_PATH];
+		wsprintfA(szWindowClass, "D3DWindow%d", (int)time(NULL));
 		WNDCLASSEXA stWndCls;
 		memset(&stWndCls, 0, sizeof(WNDCLASSEXA));
 		stWndCls.cbSize = sizeof(WNDCLASSEXA);
 		stWndCls.hInstance = GetModuleHandleA(NULL);
 		stWndCls.lpfnWndProc = D3DHookProc;
-		stWndCls.lpszClassName = "D3DWindow";
+		stWndCls.lpszClassName = szWindowClass;
 		stWndCls.style = CS_VREDRAW;
-		if (RegisterClassExA(&stWndCls) == NULL)
-			RunError("RegisterClassExA fail");
+		if (RegisterClassExA(&stWndCls) == NULL) RunError("RegisterClassExA fail");
 
-		HWND hWnd = CreateWindowExA(NULL, "D3DWindow", NULL, WS_OVERLAPPEDWINDOW, 100, 100, 100, 100, NULL, NULL, stWndCls.hInstance, NULL);
-		if (hWnd == NULL)
-			RunError("CreateWindowExA fail");
+		HWND hWnd = CreateWindowExA(NULL, szWindowClass, NULL, WS_OVERLAPPEDWINDOW, 100, 100, 100, 100, NULL, NULL, stWndCls.hInstance, NULL);
+		if (hWnd == NULL) RunError("CreateWindowExA fail");
 
 		IDirect3D9* pDirect3D = Direct3DCreate9(D3D_SDK_VERSION);
-		if (pDirect3D == NULL)
-			RunError("Direct3DCreate9 fail");
+		if (pDirect3D == NULL) RunError("Direct3DCreate9 fail");
 
 		IDirect3DDevice9* pDirect3DDevice;
 		D3DPRESENT_PARAMETERS stPresent;
@@ -95,31 +94,28 @@ d3dhook::D3DHook::D3DHook():m_bInitialize(false)
 
 	m_pGameDirect3D = nullptr;
 	m_pGameDirect3DDevice = nullptr;
-
-
 }
 
 d3dhook::D3DHook::~D3DHook()
 {
 	ReduceAllAddress();
 
-	if (m_pOwnDirect3D)
-		m_pOwnDirect3D->Release();
-	if (m_pOwnDirect3DDevice)
-		m_pOwnDirect3DDevice->Release();
+	if (m_pOwnDirect3D) m_pOwnDirect3D->Release();
+	if (m_pOwnDirect3DDevice) m_pOwnDirect3DDevice->Release();
 
+	m_pOwnDirect3D = nullptr;
+	m_pOwnDirect3DDevice = nullptr;
 	m_pDirect3DTable = nullptr;
 	m_pDirect3DDeviceTable = nullptr;
 }
 
 bool d3dhook::D3DHook::InitializeAndModifyAddress(D3dClass eClass, int nFunctionIndex, int nNewAddress)
 {
-	if (m_bInitialize == false)
-		return false;
+	if (m_bInitialize == false) return false;
 
 	if (eClass == D3dClass::Class_IDirect3D9)
 	{
-		int nOldAddress = m_pDirect3DTable[nFunctionIndex];
+		int nOldAddress = m_pDirect3DTable[nFunctionIndex];	//获取指定索引的函数地址
 		m_cDirect3DAddress[static_cast<Direct3D_Function>(nFunctionIndex)];
 		if (m_cDirect3DAddress[static_cast<Direct3D_Function>(nFunctionIndex)].Initialize(nOldAddress, nNewAddress) == false)
 			return false;
@@ -130,7 +126,7 @@ bool d3dhook::D3DHook::InitializeAndModifyAddress(D3dClass eClass, int nFunction
 
 	if (eClass == D3dClass::Class_IDirect3DDevice9)
 	{
-		int nOldAddress = m_pDirect3DDeviceTable[nFunctionIndex];
+		int nOldAddress = m_pDirect3DDeviceTable[nFunctionIndex];			//获取指定索引的函数地址
 		m_cDirect3DDeviceAddress[static_cast<Direct3DDevice_Function>(nFunctionIndex)];
 		if (m_cDirect3DDeviceAddress[static_cast<Direct3DDevice_Function>(nFunctionIndex)].Initialize(nOldAddress, nNewAddress) == false)
 			return false;
@@ -144,44 +140,33 @@ bool d3dhook::D3DHook::InitializeAndModifyAddress(D3dClass eClass, int nFunction
 
 bool d3dhook::D3DHook::ModifyAddress(D3dClass eClass, int nFunctionIndex)
 {
-	if (m_bInitialize == false)
-		return false;
+	if (m_bInitialize == false) return false;
 	
 	if (eClass == D3dClass::Class_IDirect3D9)
-	{
 		return m_cDirect3DAddress[static_cast<Direct3D_Function>(nFunctionIndex)].ModifyAddress();
-	}
 
 	if (eClass == D3dClass::Class_IDirect3DDevice9)
-	{
 		return m_cDirect3DDeviceAddress[static_cast<Direct3DDevice_Function>(nFunctionIndex)].ModifyAddress();
-	}
 
 	return false;
 }
 
 bool d3dhook::D3DHook::ReduceAddress(D3dClass eClass, int nFunctionIndex)
 {
-	if (m_bInitialize == false)
-		return false;
+	if (m_bInitialize == false) return false;
 
 	if (eClass == D3dClass::Class_IDirect3D9)
-	{
 		return m_cDirect3DAddress[static_cast<Direct3D_Function>(nFunctionIndex)].ReduceAddress();
-	}
 
 	if (eClass == D3dClass::Class_IDirect3DDevice9)
-	{
 		return m_cDirect3DDeviceAddress[static_cast<Direct3DDevice_Function>(nFunctionIndex)].ReduceAddress();
-	}
 
 	return false;
 }
 
 bool d3dhook::D3DHook::ReduceAllAddress()
 {
-	if (m_bInitialize == false)
-		return false;
+	if (m_bInitialize == false) return false;
 
 	for (std::map<Direct3D_Function, InlineHook>::iterator it = m_cDirect3DAddress.begin();
 		it != m_cDirect3DAddress.end(); it++)
