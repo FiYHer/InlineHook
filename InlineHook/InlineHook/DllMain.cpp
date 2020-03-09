@@ -35,7 +35,8 @@ HRESULT _stdcall MyPresent(IDirect3DDevice9* pDirect3DDevice, CONST RECT* pSourc
 
 void InitializeHook(void* pBuf)
 {
-	d3dhook::InitializeD3DClass(&g_Hook);
+	if (d3dhook::InitializeD3DClass(&g_Hook))
+		MessageBoxA(0, "Init成功", 0, 0);
 
 	if (g_Hook.InitializeAndModifyAddress(d3dhook::D3dClass::Class_IDirect3DDevice9, d3dhook::Direct3DDevice_Function::F_Present, reinterpret_cast<int>(MyPresent)))
 		MessageBoxA(0, "MyPresent成功", 0, 0);
