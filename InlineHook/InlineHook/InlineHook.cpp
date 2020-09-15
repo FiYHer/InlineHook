@@ -1,20 +1,24 @@
 #include "InlineHook.h"
 
-InlineHook::InlineHook():m_nOldAddress(0),m_nNewAddress(0)
+InlineHook::InlineHook() :m_nOldAddress(0), m_nNewAddress(0)
 {
+	//清空
 	memset(m_pOldAddress, 0, ShellCodeLen);
 	memset(m_pNewAddress, 0, ShellCodeLen);
 	m_pNewAddress[0] = Asmjmp;		///构造指令跳去新的函数地址
 }
 
-InlineHook::~InlineHook(){}
+InlineHook::~InlineHook() {}
 
+//初始化
 bool InlineHook::Initialize(int nOldAddress, int nNewAddress)
 {
 	try
 	{
-		///保存新的函数地址
+		///计算跳转偏移
 		int nAddressOffset = nNewAddress - (nOldAddress + ShellCodeLen);
+
+		///保存新的函数地址
 		memcpy(&m_pNewAddress[1], &nAddressOffset, ShellCodeLen - 1);
 
 		DWORD dwOldProtect;		///将原始函数地址的内存模式修改为可读可写可执行
@@ -39,6 +43,7 @@ bool InlineHook::Initialize(int nOldAddress, int nNewAddress)
 	return true;
 }
 
+//开始hook
 bool InlineHook::ModifyAddress()
 {
 	try
@@ -62,6 +67,7 @@ bool InlineHook::ModifyAddress()
 	return true;
 }
 
+//恢复hook
 bool InlineHook::ReduceAddress()
 {
 	try
@@ -70,7 +76,7 @@ bool InlineHook::ReduceAddress()
 		if (VirtualProtect(reinterpret_cast<void*>(m_nOldAddress), ShellCodeLen, PAGE_EXECUTE_READWRITE, &dwOldProtect) == FALSE)
 			throw std::runtime_error("VirtualProtect fail");
 
-		///将原始函数的字节数据还原，实现去inline hook
+		///将原始函数的字节数据还原，实现去解开inline hook
 		memcpy(reinterpret_cast<void*>(m_nOldAddress), m_pOldAddress, ShellCodeLen);
 
 		///将原始函数地址的内存模式还原
