@@ -4,6 +4,7 @@
 fun : Hook指定地址的汇编代码
 time : 2020.9.15
 by : fyh
+bus : 不支持Hook跳转类型的汇编代码 如jmp jz call... 因为没有处理跳转的相对地址
 */
 
 /*将这些宏定义复制到预处理器中
@@ -29,6 +30,19 @@ private:
 
 	LPVOID m_memory;		// 原始字节 + 跳转到原始地址
 
+	CONTEXT m_context;		//寄存器信息
+
+	/* 检测错误 */
+	void error(bool state, const char* text = nullptr)
+	{
+		if (state == false)
+		{
+			Beep(500, 500);
+			MessageBoxA(0, text, "错误", MB_OK | MB_ICONERROR);
+			exit(-1);
+		}
+	}
+
 	/* 获取指令长度,必须 >= 5 */
 	DWORD64 get_asm_length(DWORD64 original)
 	{
@@ -51,8 +65,10 @@ private:
 		// 保存上一个页面修改前的访问属性
 		static DWORD last_page = 0;
 
-		if (backup) VirtualProtect((LPVOID)original, len, last_page, &last_page);
-		else  VirtualProtect((LPVOID)original, len, PAGE_EXECUTE_READWRITE, &last_page);
+		BOOL State = FALSE;
+		if (backup) State = VirtualProtect((LPVOID)original, len, last_page, &last_page);
+		else State = VirtualProtect((LPVOID)original, len, PAGE_EXECUTE_READWRITE, &last_page);
+		error(State, "修改内存属性失败");
 	}
 
 public:
@@ -77,6 +93,7 @@ public:
 
 		// 申请内存空间
 		m_memory = VirtualAlloc(NULL, m_asm_length + 5, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+		error(m_memory, "申请内存控件失败");
 
 		// 计算偏移
 		offset = (original + m_asm_length) > ((int)m_memory + m_asm_length + 5)
@@ -98,8 +115,12 @@ public:
 		update_page(original, 5, TRUE);
 	}
 
-	/* 获取跳转地址 */
-	inline LPVOID get_jmp_address() { return m_memory; }
+	/* 执行原始代码 */
+	void jmp_original()
+	{
+		LPVOID addr = m_memory;
+		_asm jmp addr
+	}
 
 	/* 解除hook */
 	void backup()
@@ -115,5 +136,20 @@ public:
 
 		// 释放内存
 		VirtualFree(m_memory, m_asm_length + 5, MEM_RELEASE);
+	}
+
+	/* 开始处理 */
+	void begin()
+	{
+		error(GetThreadContext(GetCurrentThread(), &m_context), "获取寄存器信息失败");
+	}
+
+	/* 获取寄存器结构指针 */
+	inline CONTEXT* context() { return &m_context; }
+
+	/* 结束处理 */
+	void end()
+	{
+		error(SetThreadContext(GetCurrentThread(), &m_context), "设置寄存器信息失败");
 	}
 };
